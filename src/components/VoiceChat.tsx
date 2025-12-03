@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Mic, Send } from 'lucide-react';
-import type { SpeechRecognitionEvent, SpeechRecognitionErrorEvent, SpeechRecognition } from '@/types/voice';
+import type { SpeechRecognitionEvent, SpeechRecognitionErrorEvent, SpeechRecognition } from '@/types/voice.types';
 
 // Simulasi service (nanti ganti dengan import dari service/voiceData.ts)
 const sendVoiceMessage = async (text: string) => {
@@ -112,14 +112,14 @@ const VoiceChat: React.FC = () => {
     <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
       {/* Live Transcript - Tampil saat recording */}
       {isRecording && transcript && (
-        <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg shadow-lg p-4 max-w-xs animate-in slide-in-from-bottom border-2 border-blue-200">
+        <div className="bg-linear-to-r from-zinc-50 to-white rounded-lg shadow-lg p-4 max-w-xs animate-in slide-in-from-bottom border-2 border-black-200">
           <div className="flex items-center gap-2 mb-2">
             <div className="flex gap-1">
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
-              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
+              <div className="w-2 h-2 bg-zinc-500 rounded-full animate-pulse"></div>
+              <div className="w-2 h-2 bg-zinc-500 rounded-full animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+              <div className="w-2 h-2 bg-zinc-500 rounded-full animate-pulse" style={{ animationDelay: '0.4s' }}></div>
             </div>
-            <span className="text-xs text-blue-600 font-medium">🎤 Mendengarkan...</span>
+            <span className="text-xs text-zinc-600 font-medium">🎤 Mendengarkan...</span>
           </div>
           <p className="text-gray-800 text-sm leading-relaxed">{transcript}</p>
         </div>
@@ -133,7 +133,7 @@ const VoiceChat: React.FC = () => {
             <button
               onClick={sendMessage}
               disabled={isSending}
-              className="flex items-center gap-1 bg-blue-500 text-white text-xs px-3 py-1 rounded-full hover:bg-blue-600 disabled:bg-gray-400 transition-colors"
+              className="flex items-center gap-1 bg-zinc-500 text-white text-xs px-3 py-1 rounded-full hover:bg-zinc-600 disabled:bg-gray-400 transition-colors"
             >
               {isSending ? (
                 <span>Mengirim...</span>
@@ -165,7 +165,7 @@ const VoiceChat: React.FC = () => {
           transition-all duration-200 shadow-lg
           ${isRecording 
             ? 'bg-red-500 animate-pulse' 
-            : 'bg-blue-500 hover:bg-blue-600'
+            : 'bg-zinc-500 hover:bg-zinc-600'
           }
           disabled:bg-gray-400 disabled:cursor-not-allowed
         `}
