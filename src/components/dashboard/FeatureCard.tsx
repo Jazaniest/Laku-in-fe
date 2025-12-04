@@ -21,8 +21,9 @@ const FeatureCard = ({ feature }: { feature: FeatureType }) => {
   const IconComponent = iconMap[feature.icon] || FileText;
   
   const handleClick = () => {
-    console.log(`Navigate to: ${feature.path}`);
-    // TODO: Implement navigation
+    if (feature.path) {
+      window.location.href = feature.path;
+    }
   };
 
   return (

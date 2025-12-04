@@ -64,7 +64,7 @@ class DashboardService {
         title: 'Laporan Keuangan',
         description: 'Lihat dan kelola laporan keuangan bisnis Anda dengan detail lengkap',
         color: 'bg-blue-500',
-        path: '/dashboard/laporan-keuangan',
+        path: '/dashboard/financial-report',
         isActive: true
       },
       {
@@ -73,7 +73,7 @@ class DashboardService {
         title: 'Analisis Bisnis',
         description: 'Dapatkan insight dan analisis mendalam tentang performa bisnis',
         color: 'bg-green-500',
-        path: '/dashboard/analisis-bisnis',
+        path: '/dashboard/business-analytics',
         isActive: true
       },
       {

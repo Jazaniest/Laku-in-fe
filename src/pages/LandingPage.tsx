@@ -16,7 +16,6 @@ const LandingPage = () => {
       <StatsSection />
       <Footer />
       <VoiceChat />
-      {/* <ChatCs /> */}
     </div>
   );
 };
