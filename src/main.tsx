@@ -7,6 +7,8 @@ import AuthPage from './pages/AuthPage'
 import DashboardPage from './pages/DashboardPage'
 import FinancialReportPage from './pages/FinancialReportPage'
 import BusinessAnalyticsPage from './pages/BusinessAnalyticsPage'
+import ReceiptUploadPage from './pages/ReceiptUploadPage'
+import AIPosterGeneratorPage from './pages/AIPosterGeneratorPage'
 
 
 createRoot(document.getElementById('root')!).render(
@@ -18,6 +20,8 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/dashboard/financial-report" element={<FinancialReportPage />}/>
         <Route path="/dashboard/business-analytics" element={<BusinessAnalyticsPage />}/>
+        <Route path="/dashboard/receipt-upload" element={<ReceiptUploadPage />}/>
+        <Route path="/dashboard/poster-generator" element={<AIPosterGeneratorPage />}/>
       </Routes>
     </BrowserRouter>
   </StrictMode>,

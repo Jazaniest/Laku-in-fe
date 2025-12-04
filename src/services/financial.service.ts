@@ -1,11 +1,11 @@
-import type { 
-  Transaction, 
-  FinancialReport, 
-  FinancialSummary, 
+import type {
+  Transaction,
+  FinancialReport,
+  FinancialSummary,
   CategorySummary,
   MonthlyData,
   PaymentMethodSummary,
-  FinancialFilters 
+  FinancialFilters
 } from '@/types/financial.types';
 
 class FinancialService {
@@ -13,42 +13,47 @@ class FinancialService {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  // Generate dummy transactions
+  // Fixed simulation data untuk testing
+  private mockTransactions: Transaction[] = [
+    // Income transactions
+    { id: 'TRX-0001', date: new Date('2024-01-15'), type: 'income', category: 'Penjualan Produk', description: 'Penjualan Produk - Laptop', amount: 15000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0002', date: new Date('2024-01-18'), type: 'income', category: 'Jasa', description: 'Jasa - Konsultasi IT', amount: 5000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0003', date: new Date('2024-01-20'), type: 'income', category: 'Penjualan Produk', description: 'Penjualan Produk - Monitor', amount: 3000000, paymentMethod: 'card', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0004', date: new Date('2024-01-22'), type: 'income', category: 'Investasi', description: 'Investasi - Dividen Saham', amount: 2500000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0005', date: new Date('2024-01-25'), type: 'income', category: 'Jasa', description: 'Jasa - Pelatihan Karyawan', amount: 8000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0006', date: new Date('2024-01-28'), type: 'income', category: 'Penjualan Produk', description: 'Penjualan Produk - Keyboard', amount: 1500000, paymentMethod: 'cash', status: 'completed', createdBy: 'John Doe' },
+
+    // Expense transactions
+    { id: 'TRX-0007', date: new Date('2024-01-05'), type: 'expense', category: 'Pembelian Stok', description: 'Pembelian Stok - Hardware Komputer', amount: 20000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0008', date: new Date('2024-01-10'), type: 'expense', category: 'Gaji Karyawan', description: 'Gaji Karyawan - Januari', amount: 25000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0009', date: new Date('2024-01-12'), type: 'expense', category: 'Sewa', description: 'Sewa - Kantor Bulanan', amount: 5000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0010', date: new Date('2024-01-14'), type: 'expense', category: 'Utilitas', description: 'Utilitas - Listrik dan Air', amount: 2000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0011', date: new Date('2024-01-16'), type: 'expense', category: 'Marketing', description: 'Marketing - Iklan Digital', amount: 3000000, paymentMethod: 'card', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0012', date: new Date('2024-01-19'), type: 'expense', category: 'Transport', description: 'Transport - Bensin Kendaraan', amount: 500000, paymentMethod: 'cash', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0013', date: new Date('2024-01-21'), type: 'expense', category: 'Pembelian Stok', description: 'Pembelian Stok - Software License', amount: 2500000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0014', date: new Date('2024-01-23'), type: 'expense', category: 'Utilitas', description: 'Utilitas - Internet dan Telepon', amount: 1000000, paymentMethod: 'transfer', status: 'pending', createdBy: 'John Doe' },
+    { id: 'TRX-0015', date: new Date('2024-01-24'), type: 'expense', category: 'Marketing', description: 'Marketing - Banner Cetak', amount: 1500000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0016', date: new Date('2024-01-26'), type: 'expense', category: 'Lainnya', description: 'Lainnya - Asuransi Kendaraan', amount: 800000, paymentMethod: 'card', status: 'completed', createdBy: 'John Doe' },
+
+    // More transactions for variety
+    { id: 'TRX-0017', date: new Date('2024-01-27'), type: 'income', category: 'Lainnya', description: 'Lainnya - Komisi Penjualan', amount: 4000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0018', date: new Date('2024-01-29'), type: 'expense', category: 'Transport', description: 'Transport - Maintenance Kendaraan', amount: 2000000, paymentMethod: 'cash', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0019', date: new Date('2024-01-30'), type: 'income', category: 'Penjualan Produk', description: 'Penjualan Produk - Mouse Wireless', amount: 2000000, paymentMethod: 'e-wallet', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0020', date: new Date('2024-01-31'), type: 'expense', category: 'Pembelian Stok', description: 'Pembelian Stok - Peripheral Komputer', amount: 5000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+
+    // Previous month data
+    { id: 'TRX-0021', date: new Date('2023-12-28'), type: 'income', category: 'Penjualan Produk', description: 'Penjualan Produk - Desktop PC', amount: 12000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0022', date: new Date('2023-12-29'), type: 'expense', category: 'Gaji Karyawan', description: 'Gaji Karyawan - Bonus Desember', amount: 10000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0023', date: new Date('2023-12-30'), type: 'income', category: 'Jasa', description: 'Jasa - Support Teknis', amount: 3500000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+    { id: 'TRX-0024', date: new Date('2023-12-31'), type: 'expense', category: 'Sewa', description: 'Sewa - Kantor Desember', amount: 5000000, paymentMethod: 'transfer', status: 'completed', createdBy: 'John Doe' },
+
+    // Cancelled transaction
+    { id: 'TRX-0025', date: new Date('2024-01-17'), type: 'expense', category: 'Marketing', description: 'Marketing - Event Sponsorship', amount: 5000000, paymentMethod: 'transfer', status: 'cancelled', createdBy: 'John Doe' },
+  ];
+
+  // Generate transactions dengan fixed seed
   private generateTransactions(): Transaction[] {
-    const categories = {
-      income: ['Penjualan Produk', 'Jasa', 'Investasi', 'Lainnya'],
-      expense: ['Pembelian Stok', 'Gaji Karyawan', 'Sewa', 'Utilitas', 'Marketing', 'Transport', 'Lainnya']
-    };
-
-    const transactions: Transaction[] = [];
-    const today = new Date();
-
-    // Generate 50 transactions for last 30 days
-    for (let i = 0; i < 50; i++) {
-      const daysAgo = Math.floor(Math.random() * 30);
-      const date = new Date(today);
-      date.setDate(date.getDate() - daysAgo);
-
-      const type = Math.random() > 0.4 ? 'income' : 'expense';
-      const categoriesList = categories[type];
-      const category = categoriesList[Math.floor(Math.random() * categoriesList.length)];
-      type PaymentMethod = 'cash' | 'transfer' | 'card' | 'e-wallet';
-      const methods: PaymentMethod[] = ['cash', 'transfer', 'card', 'e-wallet'];
-
-      transactions.push({
-        id: `TRX-${String(i + 1).padStart(4, '0')}`,
-        date,
-        type,
-        category,
-        description: `${type === 'income' ? 'Pendapatan' : 'Pengeluaran'} ${category}`,
-        amount: Math.floor(Math.random() * 5000000) + 100000,
-        paymentMethod: methods[Math.floor(Math.random() * methods.length)],
-        status: Math.random() > 0.1 ? 'completed' : 'pending',
-        createdBy: 'John Doe'
-      });
-    }
-
-    return transactions.sort((a, b) => b.date.getTime() - a.date.getTime());
+    return [...this.mockTransactions].sort((a, b) => b.date.getTime() - a.date.getTime());
   }
 
   // Get financial report
@@ -56,41 +61,69 @@ class FinancialService {
     await this.delay(800);
 
     const transactions = this.generateTransactions();
-    
-    // Apply filters
+
+    // Apply filters in correct order
     let filteredTransactions = [...transactions];
-    
+
+    // Filter by type
     if (filters?.type && filters.type !== 'all') {
       filteredTransactions = filteredTransactions.filter(t => t.type === filters.type);
     }
-    
-    if (filters?.category) {
-      filteredTransactions = filteredTransactions.filter(t => t.category === filters.category);
-    }
-    
-    if (filters?.status && filters.status !== 'all') {
-      filteredTransactions = filteredTransactions.filter(t => t.status === filters.status);
-    }
-    
-    if (filters?.search) {
-      const search = filters.search.toLowerCase();
-      filteredTransactions = filteredTransactions.filter(t => 
-        t.description.toLowerCase().includes(search) ||
-        t.category.toLowerCase().includes(search) ||
-        t.id.toLowerCase().includes(search)
+
+    // Filter by category
+    if (filters?.category && filters.category !== '') {
+      filteredTransactions = filteredTransactions.filter(t =>
+        t.category.toLowerCase() === filters.category?.toLowerCase()
       );
     }
 
-    // Calculate summary
+    // Filter by status
+    if (filters?.status && filters.status !== 'all') {
+      filteredTransactions = filteredTransactions.filter(t => t.status === filters.status);
+    }
+
+    // Filter by payment method
+    if (filters?.paymentMethod && filters.paymentMethod !== '') {
+      filteredTransactions = filteredTransactions.filter(t =>
+        t.paymentMethod === filters.paymentMethod
+      );
+    }
+
+    // Filter by search (case-insensitive, multiple fields)
+    if (filters?.search && filters.search.trim() !== '') {
+      const search = filters.search.toLowerCase().trim();
+      filteredTransactions = filteredTransactions.filter(t =>
+        t.description.toLowerCase().includes(search) ||
+        t.category.toLowerCase().includes(search) ||
+        t.id.toLowerCase().includes(search) ||
+        t.paymentMethod.toLowerCase().includes(search)
+      );
+    }
+
+    // Filter by date range
+    if (filters?.startDate || filters?.endDate) {
+      filteredTransactions = filteredTransactions.filter(t => {
+        const transactionDate = new Date(t.date);
+        if (filters.startDate && transactionDate < new Date(filters.startDate)) return false;
+        if (filters.endDate) {
+          const endDate = new Date(filters.endDate);
+          endDate.setHours(23, 59, 59, 999);
+          if (transactionDate > endDate) return false;
+        }
+        return true;
+      });
+    }
+
+    // Calculate summary FROM FILTERED TRANSACTIONS
     const summary = this.calculateSummary(filteredTransactions);
-    
-    // Calculate category breakdown
+
+    // Calculate category breakdown FROM FILTERED TRANSACTIONS
     const categoryBreakdown = this.calculateCategoryBreakdown(filteredTransactions);
-    
-    // Calculate monthly data
+
+    // Calculate monthly data FROM ALL TRANSACTIONS (for chart context)
     const monthlyData = this.calculateMonthlyData(transactions);
-    
-    // Calculate payment methods
+
+    // Calculate payment methods FROM FILTERED TRANSACTIONS
     const paymentMethods = this.calculatePaymentMethods(filteredTransactions);
 
     const today = new Date();
@@ -111,29 +144,29 @@ class FinancialService {
     };
   }
 
-  // Calculate summary
+  // Calculate summary - SUDAH MENERIMA FILTERED TRANSACTIONS
   private calculateSummary(transactions: Transaction[]): FinancialSummary {
     const completedTransactions = transactions.filter(t => t.status === 'completed');
-    
+
     const totalIncome = completedTransactions
       .filter(t => t.type === 'income')
       .reduce((sum, t) => sum + t.amount, 0);
-    
+
     const totalExpense = completedTransactions
       .filter(t => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
-    
+
     const netProfit = totalIncome - totalExpense;
     const profitMargin = totalIncome > 0 ? (netProfit / totalIncome) * 100 : 0;
-    
+
     return {
       totalIncome,
       totalExpense,
       netProfit,
       profitMargin,
       transactionCount: completedTransactions.length,
-      avgTransactionValue: completedTransactions.length > 0 
-        ? (totalIncome + totalExpense) / completedTransactions.length 
+      avgTransactionValue: completedTransactions.length > 0
+        ? (totalIncome + totalExpense) / completedTransactions.length
         : 0
     };
   }
@@ -142,7 +175,7 @@ class FinancialService {
   private calculateCategoryBreakdown(transactions: Transaction[]): CategorySummary[] {
     const categoryMap = new Map<string, { amount: number; count: number }>();
     const colors = [
-      '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', 
+      '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
       '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16'
     ];
 
@@ -179,13 +212,13 @@ class FinancialService {
       .forEach(t => {
         const monthKey = `${months[t.date.getMonth()]} ${t.date.getFullYear()}`;
         const current = monthMap.get(monthKey) || { income: 0, expense: 0 };
-        
+
         if (t.type === 'income') {
           current.income += t.amount;
         } else {
           current.expense += t.amount;
         }
-        
+
         monthMap.set(monthKey, current);
       });
 
@@ -196,6 +229,13 @@ class FinancialService {
         expense: data.expense,
         profit: data.income - data.expense
       }))
+      .sort((a, b) => {
+        const [monthA, yearA] = a.month.split(' ');
+        const [monthB, yearB] = b.month.split(' ');
+        const dateA = new Date(`${monthA} 1, ${yearA}`);
+        const dateB = new Date(`${monthB} 1, ${yearB}`);
+        return dateA.getTime() - dateB.getTime();
+      })
       .slice(-6); // Last 6 months
   }
 
@@ -241,7 +281,7 @@ class FinancialService {
   // Create transaction
   async createTransaction(transaction: Omit<Transaction, 'id' | 'createdBy'>): Promise<Transaction> {
     await this.delay(500);
-    
+
     const newTransaction: Transaction = {
       ...transaction,
       id: `TRX-${Date.now()}`,
@@ -255,7 +295,7 @@ class FinancialService {
   // Update transaction
   async updateTransaction(transactionId: string, updates: Partial<Transaction>): Promise<Transaction> {
     await this.delay(500);
-    
+
     const transaction = await this.getTransactionDetail(transactionId);
     if (!transaction) {
       throw new Error('Transaction not found');
@@ -283,7 +323,7 @@ class FinancialService {
   // Get categories
   async getCategories(type?: 'income' | 'expense'): Promise<string[]> {
     await this.delay(200);
-    
+
     const categories = {
       income: ['Penjualan Produk', 'Jasa', 'Investasi', 'Lainnya'],
       expense: ['Pembelian Stok', 'Gaji Karyawan', 'Sewa', 'Utilitas', 'Marketing', 'Transport', 'Lainnya']

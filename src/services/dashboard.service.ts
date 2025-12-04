@@ -82,7 +82,7 @@ class DashboardService {
         title: 'Upload Foto Nota',
         description: 'Upload foto nota untuk otomatis masuk ke laporan keuangan',
         color: 'bg-purple-500',
-        path: '/dashboard/upload-nota',
+        path: '/dashboard/receipt-upload',
         isActive: true
       },
       {
@@ -91,7 +91,7 @@ class DashboardService {
         title: 'AI Poster Generator',
         description: 'Buat poster promosi menarik dengan teknologi AI generatif',
         color: 'bg-orange-500',
-        path: '/dashboard/ai-poster',
+        path: '/dashboard/poster-generator',
         isActive: true
       }
     ];
