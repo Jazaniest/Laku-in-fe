@@ -1,11 +1,11 @@
 import type { Transaction } from "@/types/financial.types";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { FileText } from "lucide-react";
+import { FileText, Loader2 } from "lucide-react";
 import { formatCurrency } from "@/helper/formatCurrency";
 import { formatDate } from "@/helper/formatDate";
 
-const TransactionTable = ({ transactions }: { transactions: Transaction[] }) => {
+const TransactionTable = ({ transactions, isLoading = false }: { transactions: Transaction[]; isLoading?: boolean }) => {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { label: string; className: string }> = {
       completed: { label: 'Selesai', className: 'bg-green-100 text-green-800' },
@@ -24,7 +24,7 @@ const TransactionTable = ({ transactions }: { transactions: Transaction[] }) => 
     );
   };
 
-  if (transactions.length === 0) {
+  if (transactions.length === 0 && !isLoading) {
     return (
       <Card>
         <CardContent className="flex flex-col items-center justify-center py-12">
@@ -39,7 +39,15 @@ const TransactionTable = ({ transactions }: { transactions: Transaction[] }) => 
 
   return (
     <Card>
-      <CardContent className="p-0">
+      <CardContent className="p-0 relative">
+        {isLoading && (
+          <div className="absolute inset-0 bg-white/50 backdrop-blur-sm flex items-center justify-center z-10 rounded-lg">
+            <div className="flex flex-col items-center gap-2">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+              <p className="text-sm text-zinc-600">Memperbarui data...</p>
+            </div>
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-zinc-50 border-b">

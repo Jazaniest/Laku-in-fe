@@ -5,17 +5,18 @@ import LoadingState from '@/components/dashboard/financial/LoadingState';
 import ErrorState from '@/components/dashboard/financial/ErrorState';
 import SummaryCard from '@/components/dashboard/financial/SummaryCard';
 import FilterSection from '@/components/dashboard/financial/FilterSection';
+import SearchSection from '@/components/dashboard/financial/SearchSection';
 import TransactionTable from '@/components/dashboard/financial/TransactionTable';
 import { formatCurrency } from '@/helper/formatCurrency';
-import { TrendingUp, TrendingDown, DollarSign, Receipt, Search, Loader2, Download } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Receipt, Loader2, Download, RotateCcw } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 
 const FinancialReportPage = () => {
   const {
     data,
     loading,
+    tableLoading,
     error,
     filters,
     updateFilters,
@@ -24,7 +25,6 @@ const FinancialReportPage = () => {
     exportReport
   } = useFinancialReport();
 
-  const [searchQuery, setSearchQuery] = useState('');
   const [exportLoading, setExportLoading] = useState(false);
 
   const handleBack = () => {
@@ -32,8 +32,11 @@ const FinancialReportPage = () => {
   };
 
   const handleSearch = (value: string) => {
-    setSearchQuery(value);
     updateFilters({ search: value });
+  };
+
+  const handleClearSearch = () => {
+    updateFilters({ search: '' });
   };
 
   const handleExport = async (format: 'pdf' | 'excel') => {
@@ -42,7 +45,7 @@ const FinancialReportPage = () => {
       const filename = await exportReport(format);
       alert(`Laporan berhasil di-export: ${filename}`);
     } catch (err) {
-      alert('Gagal export laporan, ' + err);
+      alert('Gagal export laporan, ' + (err instanceof Error ? err.message : 'Silakan coba lagi'));
     } finally {
       setExportLoading(false);
     }
@@ -66,12 +69,14 @@ const FinancialReportPage = () => {
                 value={formatCurrency(data.summary.totalIncome)}
                 icon={TrendingUp}
                 color="bg-green-500"
+                isLoading={tableLoading}
               />
               <SummaryCard
                 title="Total Pengeluaran"
                 value={formatCurrency(data.summary.totalExpense)}
                 icon={TrendingDown}
                 color="bg-red-500"
+                isLoading={tableLoading}
               />
               <SummaryCard
                 title="Profit Bersih"
@@ -79,12 +84,14 @@ const FinancialReportPage = () => {
                 trend={data.summary.profitMargin}
                 icon={DollarSign}
                 color="bg-blue-500"
+                isLoading={tableLoading}
               />
               <SummaryCard
                 title="Total Transaksi"
                 value={data.summary.transactionCount.toString()}
                 icon={Receipt}
                 color="bg-purple-500"
+                isLoading={tableLoading}
               />
             </div>
 
@@ -147,28 +154,38 @@ const FinancialReportPage = () => {
             {/* Transactions Section */}
             <Card>
               <CardHeader>
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div>
-                    <CardTitle>Daftar Transaksi</CardTitle>
-                    <CardDescription>
-                      Menampilkan {data.transactions.length} transaksi
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-zinc-400" />
-                      <Input
-                        placeholder="Cari transaksi..."
-                        className="pl-10 w-64"
-                        value={searchQuery}
-                        onChange={(e) => handleSearch(e.target.value)}
-                      />
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Daftar Transaksi</CardTitle>
+                      <CardDescription>
+                        Menampilkan {data.transactions.length} transaksi
+                        {Object.keys(filters).length > 0 && ' (dengan filter aktif)'}
+                      </CardDescription>
                     </div>
-                    <FilterSection
-                        filters={filters}
-                        onFilterChange={(newFilters) => updateFilters(newFilters)}
-                        onReset={resetFilters}
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+                    <SearchSection
+                      value={filters.search || ''}
+                      onChange={handleSearch}
+                      onClear={handleClearSearch}
+                      placeholder="Cari ID, deskripsi, kategori..."
                     />
+                    <FilterSection
+                      filters={filters}
+                      onFilterChange={(newFilters) => updateFilters(newFilters)}
+                      onReset={resetFilters}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={refreshReport}
+                      title="Refresh data"
+                      disabled={tableLoading}
+                    >
+                      <RotateCcw className={`w-4 h-4 ${tableLoading ? 'animate-spin' : ''}`} />
+                    </Button>
                     <Button
                       variant="outline"
                       onClick={() => handleExport('excel')}
@@ -186,7 +203,7 @@ const FinancialReportPage = () => {
               </CardHeader>
             </Card>
 
-            <TransactionTable transactions={data.transactions} />
+            <TransactionTable transactions={data.transactions} isLoading={tableLoading} />
           </div>
         ) : null}
       </main>

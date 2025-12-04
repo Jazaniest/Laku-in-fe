@@ -58,10 +58,10 @@ export interface FinancialReport {
 export interface FinancialFilters {
   startDate?: Date;
   endDate?: Date;
-  type?: 'income' | 'expense' | 'all';
+  type?: 'all' | 'income' | 'expense';
   category?: string;
   paymentMethod?: string;
-  status?: 'completed' | 'pending' | 'cancelled' | 'all';
+  status?: 'all' | 'completed' | 'pending' | 'cancelled';
   search?: string;
 }
 
@@ -69,8 +69,7 @@ export interface FinancialFilters {
 export const DEFAULT_FINANCIAL_FILTERS: FinancialFilters = {
   type: 'all',
   status: 'all',
-  search: '',
-  // startDate dan endDate bisa di-set berdasarkan periode default
+  search: ''
 };
 
 export interface FilterSectionProps {

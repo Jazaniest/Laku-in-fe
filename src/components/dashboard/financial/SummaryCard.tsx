@@ -1,19 +1,39 @@
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const SummaryCard = ({
   title,
   value,
   trend,
   icon: Icon,
-  color
+  color,
+  isLoading = false
 }: {
   title: string;
   value: string;
   trend?: number;
   icon: React.ElementType;
   color: string;
+  isLoading?: boolean;
 }) => {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 space-y-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-8 w-32" />
+              <Skeleton className="h-4 w-16 mt-2" />
+            </div>
+            <Skeleton className="w-12 h-12 rounded-lg" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardContent className="p-6">
@@ -34,7 +54,7 @@ const SummaryCard = ({
               </div>
             )}
           </div>
-          <div className={`w-12 h-12 rounded-lg ${color} flex items-center justify-center`}>
+          <div className={`w-12 h-12 rounded-lg ${color} flex items-center justify-center shrink-0`}>
             <Icon className="w-6 h-6 text-white" />
           </div>
         </div>
@@ -43,4 +63,4 @@ const SummaryCard = ({
   );
 };
 
-export default SummaryCard
+export default SummaryCard;
