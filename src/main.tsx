@@ -9,6 +9,7 @@ import FinancialReportPage from './pages/FinancialReportPage'
 import BusinessAnalyticsPage from './pages/BusinessAnalyticsPage'
 import ReceiptUploadPage from './pages/ReceiptUploadPage'
 import AIPosterGeneratorPage from './pages/AIPosterGeneratorPage'
+import WhatsAppPage from './pages/WhatsAppPage'
 
 
 createRoot(document.getElementById('root')!).render(
@@ -22,6 +23,7 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/dashboard/business-analytics" element={<BusinessAnalyticsPage />}/>
         <Route path="/dashboard/receipt-upload" element={<ReceiptUploadPage />}/>
         <Route path="/dashboard/poster-generator" element={<AIPosterGeneratorPage />}/>
+        <Route path="/dashboard/whatsapp" element={<WhatsAppPage />}/>
       </Routes>
     </BrowserRouter>
   </StrictMode>,
