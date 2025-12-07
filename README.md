@@ -405,5 +405,3 @@ VITE_KOLOSAL_API_KEY
 ---
 
 **Laku-in Frontend** - Solusi e-commerce generasi berikutnya dengan integrasi AI untuk pengalaman yang revolusioner.
-
-*Built with ❤️ menggunakan teknologi modern untuk bisnis yang lebih baik*

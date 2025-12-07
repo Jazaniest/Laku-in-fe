@@ -1,9 +1,10 @@
 // components/VoiceChat.tsx
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic, Loader } from 'lucide-react';
+import { Mic, Loader, Square } from 'lucide-react';
 import { voiceService } from '@/services/voice.service';
 import type { VoiceResponse } from '@/services/voice.service';
+import type { SpeechRecognition, SpeechRecognitionEvent, SpeechRecognitionErrorEvent } from '@/types/voice.types';
 
 const VoiceChat: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
@@ -17,7 +18,47 @@ const VoiceChat: React.FC = () => {
   }>>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [showStatus, setShowStatus] = useState(false);
+  const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
   const processingTimeoutRef = useRef<number | undefined>(undefined);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    if (SpeechRecognition) {
+      const recognitionInstance = new SpeechRecognition();
+      recognitionInstance.continuous = false;
+      recognitionInstance.interimResults = true;
+      recognitionInstance.lang = 'id-ID';
+      
+      recognitionInstance.onresult = (event: SpeechRecognitionEvent) => {
+        let finalTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+        }
+        
+        if (finalTranscript) {
+          setCurrentTranscript(finalTranscript);
+        }
+      };
+      
+      recognitionInstance.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('Speech recognition error:', event.error);
+        setIsRecording(false);
+      };
+      
+      recognitionInstance.onend = () => {
+        setIsRecording(false);
+      };
+      
+      setRecognition(recognitionInstance);
+    } else {
+      console.warn('Speech recognition not supported in this browser');
+    }
+  }, []);
 
   const addMessage = useCallback((type: 'user' | 'ai', message: string) => {
     setMessages(prev => [...prev, {
@@ -61,35 +102,54 @@ const VoiceChat: React.FC = () => {
   }, [addMessage]);
 
   const handleStartRecording = useCallback(() => {
-    if (isProcessing) return;
-
-    // Mock recording
+    if (isProcessing || !recognition) return;
+    
     setIsRecording(true);
-
-    // Simulate recording with timeout
-    setTimeout(() => {
+    setCurrentTranscript('');
+    
+    try {
+      recognition.start();
+    } catch (error) {
+      console.error('Error starting recognition:', error);
       setIsRecording(false);
-    }, 2000);
+      // Tampilkan pesan error ke user
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'ai',
+        message: 'Maaf, terjadi kesalahan saat memulai perekaman suara.',
+        timestamp: Date.now()
+      }]);
+    }
+  }, [isProcessing, recognition]);
 
-    // Mock transcript
-    setTimeout(() => {
-      const mockTranscript = 'Tampilkan halaman laporan finansial';
-      setCurrentTranscript(mockTranscript);
-      sendCommand(mockTranscript);
-    }, 2500);
-  }, [isProcessing, sendCommand]);
+  const handleStopRecording = useCallback(() => {
+    if (recognition && isRecording) {
+      recognition.stop();
+      setIsRecording(false);
+    }
+  }, [recognition, isRecording]);
+
+  // Process transcript when recording ends
+  useEffect(() => {
+    if (!isRecording && currentTranscript && !isProcessing) {
+      sendCommand(currentTranscript);
+    }
+  }, [isRecording, currentTranscript, isProcessing]);
 
   useEffect(() => {
     return () => {
       clearTimeout(processingTimeoutRef.current);
+      if (recognition && isRecording) {
+        recognition.stop();
+      }
     };
-  }, []);
+  }, [recognition, isRecording]);
 
   if (!isExpanded) {
     return (
       <button
         onClick={() => setIsExpanded(true)}
-        className="fixed right-4 top-1/2 transform -translate-y-1/2 p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50"
+        className="fixed bottom-6 right-6 p-3 bg-zinc-500 hover:bg-zinc-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50"
         title="Buka Voice Chat"
       >
         <Mic className="w-5 h-5" />
@@ -98,7 +158,7 @@ const VoiceChat: React.FC = () => {
   }
 
   return (
-    <div className="fixed right-4 top-1/2 transform -translate-y-1/2 w-80 bg-white rounded-lg shadow-xl z-50">
+    <div className="fixed bottom-6 right-6 w-80 bg-white rounded-lg shadow-xl z-50">
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-gray-200">
         <h3 className="text-sm font-semibold text-gray-800">Voice Command</h3>
@@ -116,9 +176,9 @@ const VoiceChat: React.FC = () => {
         <div className="text-xs text-gray-600 mb-2">{isProcessing ? 'Processing command...' : 'Ready for your command'}</div>
         
         {showStatus && (
-          <div className="flex items-center space-x-2 bg-blue-50 p-2 rounded">
-            <Loader className="w-4 h-4 text-blue-500 animate-spin" />
-            <span className="text-xs text-blue-700">Processing...</span>
+          <div className="flex items-center space-x-2 bg-zinc-50 p-2 rounded">
+            <Loader className="w-4 h-4 text-zinc-500 animate-spin" />
+            <span className="text-xs text-zinc-700">Processing...</span>
           </div>
         )}
 
@@ -139,7 +199,7 @@ const VoiceChat: React.FC = () => {
               key={msg.id}
               className={`p-2 rounded text-xs ${
                 msg.type === 'user'
-                  ? 'bg-blue-100 ml-auto max-w-[80%]'
+                  ? 'bg-zinc-100 ml-auto max-w-[80%]'
                   : 'bg-gray-100 mr-auto max-w-[80%]'
               }`}
             >
@@ -152,19 +212,25 @@ const VoiceChat: React.FC = () => {
       {/* Record Button */}
       <div className="p-3 border-t border-gray-200">
         <button
-          onClick={handleStartRecording}
-          disabled={isProcessing || isRecording}
-          className={`w-full flex items-center justify-center space-x-2 py-2 px-3 text-black rounded text-sm transition-colors ${
+          onClick={isRecording ? handleStopRecording : handleStartRecording}
+          disabled={isProcessing || !recognition}
+          className={`w-full flex items-center justify-center space-x-2 py-2 px-3 rounded text-sm transition-colors ${
             isRecording
               ? 'bg-red-500 text-white'
               : isProcessing
               ? 'bg-gray-200 text-gray-500'
-              : 'bg-blue-500 hover:bg-blue-600 text-white'
-          }`}
+              : 'bg-zinc-500 hover:bg-zinc-600 text-white'
+          } ${(!recognition || isProcessing) ? ' opacity-50 cursor-not-allowed' : ' cursor-pointer'}`}
         >
-          <Mic className="w-4 h-4" />
-          <span>{isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Record Command'}</span>
+          {isRecording ? <Square className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          <span>{isRecording ? 'Stop Recording' : isProcessing ? 'Processing...' : 'Record Command'}</span>
         </button>
+        
+        {!recognition && (
+          <p className="text-xs text-red-600 mt-1">
+            Speech recognition not supported in this browser. Use Chrome or Edge.
+          </p>
+        )}
       </div>
 
       {/* Help Text */}

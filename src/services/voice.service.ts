@@ -17,11 +17,11 @@ export type { VoiceResponse };
  */
 export class VoiceService {
   /**
-   * Send voice message to AI
+   * Send voice transcript text to AI endpoint
    */
   async sendVoiceMessage(transcript: string): Promise<VoiceResponse> {
     try {
-      console.log('🎤 Mengirim voice message:', transcript);
+      console.log('🎤 Mengirim voice message ke endpoint:', transcript);
 
       // Clean up transcript
       const trimmedTranscript = transcript.trim();
@@ -34,7 +34,7 @@ export class VoiceService {
       }
 
       console.log('📝 Processing cleaned transcript:', trimmedTranscript);
-      console.log('🤖 Sending to AI for processing...');
+      console.log('🤖 Sending to AI endpoint...');
 
       // Send to AI for processing
       return await this.processWithAI(trimmedTranscript);
@@ -48,7 +48,7 @@ export class VoiceService {
   }
 
   /**
-   * Process voice command with Kolosal AI
+   * Process voice command with AI endpoint
    */
   private async processWithAI(transcript: string): Promise<VoiceResponse> {
     try {
@@ -57,21 +57,21 @@ export class VoiceService {
         messages: [
           {
             role: 'user' as const,
-            content: `Berikan respons untuk perintah ini: ${transcript}. Pastikan response-nya adalah JSON dengan format: {"action": "redirect", "response": {"url": "/nama-halaman"}} atau {"action": "text", "response": {"message": "pesan"}}`
+            content: transcript // Send the transcript text directly to API
           }
         ],
         temperature: 0.3,
         max_tokens: 100
       };
 
-      // Send to Kolosal API
+      // Send to API endpoint
       const completionResponse: KolosalCompletionResponse = await kolosalAPIClient.sendCompletion(completionRequest);
 
       // Validate response
       if (!completionResponse.success || !completionResponse.data?.choices?.[0]?.message) {
         return {
           type: 'error',
-          data: { error: 'Response dari Kolosal AI tidak valid' }
+          data: { error: 'Response dari AI endpoint tidak valid' }
         };
       }
 
@@ -80,47 +80,24 @@ export class VoiceService {
       if (!aiMessage) {
         return {
           type: 'error',
-          data: { error: 'Tidak ada teks yang diterima dari AI' }
+          data: { error: 'Tidak ada response yang diterima dari AI endpoint' }
         };
       }
 
-      console.log('🤖 AI Response:', aiMessage);
+      console.log('🤖 AI Endpoint Response:', aiMessage);
 
-      // Try to parse JSON response
-      try {
-        const response = JSON.parse(aiMessage);
-        
-        if (response.action === 'navigate' || response.action === 'redirect') {
-          return {
-            type: 'navigate',
-            data: { path: response.response?.url || response.response?.page }
-          };
-        } else if (response.action === 'text') {
-          return {
-            type: 'text',
-            data: { message: response.response?.message }
-          };
-        } else {
-          return {
-            type: 'text',
-            data: { message: aiMessage }
-          };
-        }
-      } catch {
-        // If not JSON, return as text
-        return {
-          type: 'text',
-          data: { message: aiMessage }
-        };
-      }
+      return {
+        type: 'text',
+        data: { message: aiMessage }
+      };
     } catch (error) {
-      console.error('❌ Error processing with AI:', error);
+      console.error('❌ Error processing with AI endpoint:', error);
       throw error;
     }
   }
 
   /**
-   * Initialize voice recognition
+   * Initialize voice service
    */
   async initialize(): Promise<boolean> {
     try {
