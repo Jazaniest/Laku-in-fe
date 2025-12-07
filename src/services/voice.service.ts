@@ -1,349 +1,135 @@
-// services/voice.service.ts
-
-import type {
-  BackendResponse,
-  TextResponse,
-  NavigationResponse,
-  RouteValidationResult,
-  VoiceServiceError as VoiceServiceErrorEnum,
-  VoiceError,
-  AvailableRoute,
-} from '@/types/voice.types';
-import {
-  isAvailableRoute,
-  AVAILABLE_ROUTES,
-  VoiceServiceError,
-} from '@/types/voice.types';
-import {
-  createVoiceCommandCompletionRequest,
-  parseNavigationResponse,
-  type NavigationCommand,
-  type KolosalCompletionResponse,
-} from '@/types/kolosal-api.types';
+import type { KolosalCompletionResponse } from '@/types/kolosal-api.types';
 import { kolosalAPIClient } from './kolosal-api.client';
 
-/**
- * Voice Service menggunakan Kolosal API untuk chat completion
- * Mengubah voice commands menjadi navigasi atau response teks
- */
-class VoiceService {
-  private readonly availableRoutes = {
-    public: [...AVAILABLE_ROUTES.public],
-    protected: [...AVAILABLE_ROUTES.protected],
+interface VoiceResponse {
+  type: 'text' | 'navigate' | 'error';
+  data: {
+    message?: string;
+    path?: string;
+    error?: string;
   };
+}
+
+export type { VoiceResponse };
+
+/**
+ * Simplified Voice Service for initial implementation
+ */
+export class VoiceService {
+  /**
+   * Send voice message to AI
+   */
+  async sendVoiceMessage(transcript: string): Promise<VoiceResponse> {
+    try {
+      console.log('🎤 Mengirim voice message:', transcript);
+
+      // Clean up transcript
+      const trimmedTranscript = transcript.trim();
+      
+      if (!trimmedTranscript || trimmedTranscript.length === 0) {
+        return {
+          type: 'error',
+          data: { error: 'Transcript kosong terdeteksi' }
+        };
+      }
+
+      console.log('📝 Processing cleaned transcript:', trimmedTranscript);
+      console.log('🤖 Sending to AI for processing...');
+
+      // Send to AI for processing
+      return await this.processWithAI(trimmedTranscript);
+    } catch (error) {
+      console.error('❌ Error in sendVoiceMessage:', error);
+      return {
+        type: 'error',
+        data: { error: 'Error memproses transkripsi' }
+      };
+    }
+  }
 
   /**
-   * Mengirim voice message ke Kolosal API untuk chat completion
+   * Process voice command with Kolosal AI
    */
-  async sendVoiceMessage(_audioBlob: Blob, transcript?: string): Promise<BackendResponse> {
+  private async processWithAI(transcript: string): Promise<VoiceResponse> {
     try {
-      // Validasi transcript
-      if (!transcript || typeof transcript !== 'string') {
-        throw this.createError(
-          VoiceServiceError.NO_SPEECH_DETECTED,
-          'Transcript tidak tersedia atau tidak valid'
-        );
-      }
+      // Create completion request
+      const completionRequest = {
+        messages: [
+          {
+            role: 'user' as const,
+            content: `Berikan respons untuk perintah ini: ${transcript}. Pastikan response-nya adalah JSON dengan format: {"action": "redirect", "response": {"url": "/nama-halaman"}} atau {"action": "text", "response": {"message": "pesan"}}`
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 100
+      };
 
-      const trimmedTranscript = transcript.trim();
-      if (trimmedTranscript.length === 0) {
-        throw this.createError(
-          VoiceServiceError.NO_SPEECH_DETECTED,
-          'Transcript kosong'
-        );
-      }
-
-      console.log('🎤 Mengirim ke Kolosal API...');
-      console.log('📝 Transcript:', trimmedTranscript);
-
-      // Buat completion request
-      const completionRequest = createVoiceCommandCompletionRequest(trimmedTranscript);
-
-      // Kirim ke Kolosal API
+      // Send to Kolosal API
       const completionResponse: KolosalCompletionResponse = await kolosalAPIClient.sendCompletion(completionRequest);
 
-      // Validasi response
-      if (!completionResponse.data?.choices?.[0]?.message?.content) {
-        throw this.createError(
-          VoiceServiceError.INVALID_RESPONSE,
-          'Response dari Kolosal API tidak valid'
-        );
+      // Validate response
+      if (!completionResponse.success || !completionResponse.data?.choices?.[0]?.message) {
+        return {
+          type: 'error',
+          data: { error: 'Response dari Kolosal AI tidak valid' }
+        };
       }
 
       const aiMessage = completionResponse.data.choices[0].message.content.trim();
       
-      // Parse dan validasi response
-      const navigationCommand: NavigationCommand = parseNavigationResponse(aiMessage);
-      
-      // Transform ke BackendResponse dengan type safety
-      return this.transformCompletionToBackendResponse(navigationCommand);
-
-    } catch (error) {
-      console.error('❌ Error in sendVoiceMessage:', error);
-      return this.handleError(error);
-    }
-  }
-
-  /**
-   * Transform completion response ke BackendResponse dengan type safety yang ketat
-   */
-  private transformCompletionToBackendResponse(command: NavigationCommand): BackendResponse {
-    if (command.action === 'text') {
-      return {
-        type: 'text',
-        data: {
-          message: this.validateTextMessage(command.response.message),
-          timestamp: this.validateTimestamp(command.response.timestamp),
-        } as TextResponse,
-      };
-    }
-
-    if (command.action === 'navigation') {
-      const targetPath = command.response.path;
-
-      if (!targetPath || typeof targetPath !== 'string') {
-        throw this.createError(
-          VoiceServiceError.INVALID_RESPONSE,
-          'Target path tidak valid'
-        );
-      }
-
-      // Normalize path
-      const normalizedPath = this.normalizePath(targetPath);
-
-      // Validate route dengan tipe yang ketat
-      const validation = this.validateRoute(normalizedPath);
-
-      if (!validation.isValid) {
+      if (!aiMessage) {
         return {
-          type: 'text',
-          data: {
-            message: this.validateTextMessage(validation.message),
-            timestamp: Date.now(),
-          },
+          type: 'error',
+          data: { error: 'Tidak ada teks yang diterima dari AI' }
         };
       }
 
-      // Validasi path adalah AvailableRoute
-      if (!this.isValidRoute(normalizedPath)) {
-        throw this.createError(
-          VoiceServiceError.INVALID_ROUTE,
-          `Route "${normalizedPath}" tidak valid`
-        );
+      console.log('🤖 AI Response:', aiMessage);
+
+      // Try to parse JSON response
+      try {
+        const response = JSON.parse(aiMessage);
+        
+        if (response.action === 'navigate' || response.action === 'redirect') {
+          return {
+            type: 'navigate',
+            data: { path: response.response?.url || response.response?.page }
+          };
+        } else if (response.action === 'text') {
+          return {
+            type: 'text',
+            data: { message: response.response?.message }
+          };
+        } else {
+          return {
+            type: 'text',
+            data: { message: aiMessage }
+          };
+        }
+      } catch {
+        // If not JSON, return as text
+        return {
+          type: 'text',
+          data: { message: aiMessage }
+        };
       }
-
-      return {
-        type: 'navigation',
-        data: {
-          path: normalizedPath as AvailableRoute,
-          params: this.validateParams(command.response.params),
-          timestamp: this.validateTimestamp(command.response.timestamp),
-        } as NavigationResponse,
-      };
+    } catch (error) {
+      console.error('❌ Error processing with AI:', error);
+      throw error;
     }
-
-    throw this.createError(
-      VoiceServiceError.INVALID_RESPONSE,
-      `Action tidak valid: ${command.action}`
-    );
   }
 
   /**
-   * Normalize path untuk konsistensi
+   * Initialize voice recognition
    */
-  private normalizePath(path: string): string {
-    if (typeof path !== 'string') {
-      throw this.createError(
-        VoiceServiceError.INVALID_ROUTE,
-        'Path harus string'
-      );
-    }
-
-    let normalized = path.toLowerCase().trim();
-    
-    // Pastikan path dimulai dengan /
-    if (!normalized.startsWith('/')) {
-      normalized = '/' + normalized;
-    }
-    
-    // Hapus trailing slash kecuali untuk root
-    if (normalized.length > 1 && normalized.endsWith('/')) {
-      normalized = normalized.slice(0, -1);
-    }
-    
-    return normalized;
-  }
-
-  /**
-   * Validasi apakah route tersedia
-   */
-  validateRoute(path: string): RouteValidationResult {
-    const normalizedPath = this.normalizePath(path);
-
-    const isPublic = this.availableRoutes.public.some(
-      (route) => this.normalizePath(route) === normalizedPath
-    );
-
-    const isProtected = this.availableRoutes.protected.some(
-      (route) => this.normalizePath(route) === normalizedPath
-    );
-
-    if (!isPublic && !isProtected) {
-      const availablePages = [
-        'Beranda (/)',
-        'Autentikasi (/auth)',
-        'Dashboard (/dashboard)',
-        'Laporan Keuangan (/dashboard/financial-report)',
-        'Analitik Bisnis (/dashboard/business-analytics)',
-        'Unggah Nota (/dashboard/receipt-upload)',
-        'Pembuat Poster (/dashboard/poster-generator)',
-      ];
-
-      return {
-        isValid: false,
-        isProtected: false,
-        message: `Halaman "${normalizedPath}" tidak ditemukan. Halaman yang tersedia: ${availablePages.join(', ')}.`,
-      };
-    }
-
-    return {
-      isValid: true,
-      isProtected: isProtected,
-    };
-  }
-
-  /**
-   * Validasi apakah path adalah route yang valid
-   */
-  private isValidRoute(path: string): boolean {
-    const normalizedPath = this.normalizePath(path);
-    return isAvailableRoute(normalizedPath);
-  }
-
-  /**
-   * Cek apakah route memerlukan autentikasi
-   */
-  isProtectedRoute(path: string): boolean {
+  async initialize(): Promise<boolean> {
     try {
-      const normalizedPath = this.normalizePath(path);
-      return this.availableRoutes.protected.some(
-        (route) => this.normalizePath(route) === normalizedPath
-      );
-    } catch {
+      console.log('🎤 Inisialisasi Voice Service...');
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to initialize voice service:', error);
       return false;
     }
-  }
-
-  /**
-   * Get auth token dari cookie atau localStorage
-   */
-  getAuthToken(): string | null {
-    try {
-      // Coba cookie dulu
-      const cookieToken = document.cookie
-        .split('; ')
-        .find((row) => row.startsWith('authToken='))
-        ?.split('=')[1];
-
-      if (cookieToken) return cookieToken;
-
-      // Fallback ke localStorage
-      return localStorage.getItem('authToken');
-    } catch {
-      return null;
-    }
-  }
-
-  /**
-   * Cek apakah user authenticated
-   */
-  isAuthenticated(): boolean {
-    try {
-      const token = this.getAuthToken();
-      return !!token && token.length > 0;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Validasi message text
-   */
-  private validateTextMessage(message: unknown): string {
-    if (typeof message !== 'string') {
-      return 'Tidak ada respons';
-    }
-    
-    const trimmedMessage = message.trim();
-    return trimmedMessage.length > 0 ? trimmedMessage : 'Tidak ada respons';
-  }
-
-  /**
-   * Validasi timestamp
-   */
-  private validateTimestamp(timestamp: unknown): number {
-    if (typeof timestamp === 'number') {
-      return timestamp;
-    }
-    
-    return Date.now();
-  }
-
-  /**
-   * Validasi parameters
-   */
-  private validateParams(params: unknown) {
-    if (typeof params === 'object' && params !== null) {
-      return params as Record<string, string | number | boolean>;
-    }
-    
-    return {};
-  }
-
-  /**
-   * Create structured error
-   */
-  private createError(code: VoiceServiceErrorEnum, message: string, originalError?: Error): VoiceError {
-    return {
-      code,
-      message,
-      originalError,
-    };
-  }
-
-  /**
-   * Handle error dan convert ke BackendResponse
-   */
-  private handleError(error: unknown): BackendResponse {
-    let errorMessage = 'Terjadi kesalahan yang tidak diketahui';
-
-    if (this.isVoiceError(error)) {
-      errorMessage = error.message;
-    } else if (error instanceof Error) {
-      errorMessage = error.message;
-    } else if (typeof error === 'string' && error.length > 0) {
-      errorMessage = error;
-    }
-
-    return {
-      type: 'text',
-      data: {
-        message: `Maaf, terjadi kesalahan: ${errorMessage}. Silakan coba lagi.`,
-        timestamp: Date.now(),
-      },
-    };
-  }
-
-  /**
-   * Type guard untuk VoiceError
-   */
-  private isVoiceError(error: unknown): error is VoiceError {
-    return (
-      typeof error === 'object' &&
-      error !== null &&
-      'code' in error &&
-      'message' in error
-    );
   }
 }
 

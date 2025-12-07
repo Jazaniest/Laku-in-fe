@@ -1,439 +1,176 @@
 // components/VoiceChat.tsx
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Mic } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Mic, Loader } from 'lucide-react';
 import { voiceService } from '@/services/voice.service';
-import type {
-  SpeechRecognitionEvent,
-  SpeechRecognitionErrorEvent,
-  SpeechRecognition,
-  VoiceResponse,
-  BackendResponse,
-} from '@/types/voice.types';
-import { isTextResponse, isNavigationResponse } from '@/types/voice.types';
+import type { VoiceResponse } from '@/services/voice.service';
 
 const VoiceChat: React.FC = () => {
-  const navigate = useNavigate();
   const [isRecording, setIsRecording] = useState(false);
-  const [transcript, setTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [messages, setMessages] = useState<VoiceResponse[]>([]);
+  const [currentTranscript, setCurrentTranscript] = useState('');
+  const [messages, setMessages] = useState<Array<{
+    id: string;
+    type: 'user' | 'ai';
+    message: string;
+    timestamp: number;
+  }>>([]);
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [showStatus, setShowStatus] = useState(false);
+  const processingTimeoutRef = useRef<number | undefined>(undefined);
 
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<BlobPart[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-  const isStoppingRef = useRef(false);
-  const hasFinalResultRef = useRef(false);
-
-  // Initialize speech recognition
-  useEffect(() => {
-    const SpeechRecognitionClass = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognitionClass) {
-      setError('Browser Anda tidak mendukung voice recognition. Gunakan Chrome atau Edge.');
-      return;
-    }
-
-    const recognition = new SpeechRecognitionClass();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = 'id-ID';
-    recognition.maxAlternatives = 1;
-
-    recognition.onresult = (event: SpeechRecognitionEvent) => {
-      if (!event?.results?.length) return;
-
-      // Simpan index result terakhir yang diproses untuk mencegah duplikasi
-      const lastResult = event.results[event.results.length - 1];
-      if (!lastResult?.[0]) return;
-
-      const transcriptText = lastResult[0].transcript;
-
-      // Hitung untuk mencegah duplikasi
-      if (lastResult.isFinal) {
-        hasFinalResultRef.current = true;
-        setTranscript(transcriptText.trim());
-        
-        // Auto-stop recording setelah hasil final
-        setTimeout(() => {
-          if (isRecording) {
-            handleStopRecording();
-          }
-        }, 200);
-      } else {
-        // Untuk interim result, hanya update jika belum ada final
-        if (!hasFinalResultRef.current) {
-          setTranscript(transcriptText.trim());
-        }
-      }
-    };
-
-    recognition.onend = () => {
-      // Hanya restart jika sedang recording dan bukan stop yang disengaja
-      if (isRecording && !isStoppingRef.current) {
-        try {
-          recognition.start();
-        } catch (e) {
-          console.error('Failed to restart recognition:', e);
-        }
-      }
-    };
-
-    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      if (isStoppingRef.current) return;
-
-      const errorMessages: Record<string, string> = {
-        'no-speech': 'Tidak ada suara terdeteksi. Silakan coba lagi.',
-        'not-allowed': 'Akses mikrofon ditolak. Mohon berikan izin mikrofon.',
-        'audio-capture': 'Tidak dapat mengakses mikrofon. Periksa perangkat Anda.',
-        network: 'Koneksi bermasalah. Periksa internet Anda.',
-        aborted: 'Perekaman dibatalkan.',
-      };
-
-     setError(errorMessages[event.error] || 'Gagal merekam suara. Silakan coba lagi.');
-      handleStopRecording();
-    };
-
-    recognitionRef.current = recognition;
-
-    return () => {
-      if (recognitionRef.current) {
-        try {
-          recognitionRef.current.stop();
-        } catch (e) {
-          console.error('Cleanup error:', e);
-        }
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-      }
-    };
-  }, [isRecording]);
-
-  // Handle backend response - dengan proper error handling
-  const handleResponse = useCallback(
-    async (response: BackendResponse) => {
-      try {
-        if (isTextResponse(response.data)) {
-          const newMessage: VoiceResponse = {
-            id: `ai_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-            message: response.data.message,
-            timestamp: response.data.timestamp,
-            type: 'ai',
-          };
-          setMessages((prev) => [...prev, newMessage]);
-        } else if (isNavigationResponse(response.data)) {
-          const { path, params } = response.data;
-
-          console.log('🧭 Navigasi ke:', path, 'dengan params:', params);
-
-          // Check authentication
-          const isProtected = voiceService.isProtectedRoute(path);
-          const isAuthenticated = voiceService.isAuthenticated();
-
-          if (isProtected && !isAuthenticated) {
-            // User perlu login
-            const loginMessage: VoiceResponse = {
-              id: `ai_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-              message:
-                'Anda perlu login terlebih dahulu untuk mengakses halaman ini. Mengarahkan ke halaman login...',
-              timestamp: Date.now(),
-              type: 'ai',
-            };
-            setMessages((prev) => [...prev, loginMessage]);
-
-            // Redirect ke login dengan return URL
-            setTimeout(() => {
-              navigate('/auth', {
-                state: {
-                  returnUrl: path,
-                  returnParams: params,
-                },
-              });
-            }, 1500);
-          } else {
-            // Navigate ke halaman
-            const confirmMessage: VoiceResponse = {
-              id: `ai_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-              message: `Mengarahkan Anda ke halaman ${path}...`,
-              timestamp: Date.now(),
-              type: 'ai',
-            };
-            setMessages((prev) => [...prev, confirmMessage]);
-
-            setTimeout(() => {
-              navigate(path, { state: params });
-            }, 800);
-          }
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Kesalahan tidak diketahui';
-        console.error('Error handling response:', err);
-        setError(errorMessage);
-      }
-    },
-    [navigate]
-  );
-
-  // Start recording
-  const handleStartRecording = useCallback(async () => {
-    try {
-      setError(null);
-      
-      // Reset transcript state
-      setTranscript('');
-      hasFinalResultRef.current = false;
-      isStoppingRef.current = false;
-
-      // Request microphone access
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          sampleRate: 44100,
-        },
-      });
-
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm',
-      });
-
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (event: BlobEvent) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      // Sederhanakan start recording
-      mediaRecorder.start(1000);
-      mediaRecorderRef.current = mediaRecorder;
-      streamRef.current = stream;
-
-      // Start speech recognition
-      if (recognitionRef.current) {
-        recognitionRef.current.start();
-      }
-
-      setIsRecording(true);
-      console.log('🎤 Recording started');
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Error starting recording';
-      console.error('Error starting recording:', errorMessage);
-
-      if (err instanceof DOMException && err.name === 'NotAllowedError') {
-        setError('Akses mikrofon ditolak. Mohon berikan izin mikrofon di pengaturan browser.');
-      } else {
-        setError('Gagal mengakses mikrofon. Pastikan mikrofon terhubung dan berfungsi.');
-      }
-    }
+  const addMessage = useCallback((type: 'user' | 'ai', message: string) => {
+    setMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      type,
+      message,
+      timestamp: Date.now()
+    }]);
   }, []);
 
-  // Stop recording dan process message
-  const handleStopRecording = useCallback(async () => {
-    console.log('🛑 Stopping recording...');
-    isStoppingRef.current = true;
-    setIsRecording(false);
-
-    // Stop speech recognition
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        console.error('Error stopping recognition:', e);
-      }
-    }
-
-    // Proses langsung tanpa promise rumit
+  const sendCommand = useCallback(async (transcript: string) => {
     setIsProcessing(true);
-    setError(null);
+    setShowStatus(true);
+    
+    // Add user message
+    addMessage('user', transcript);
+    setCurrentTranscript('');
+    
+    try {
+      // Simulate processing timeout
+      processingTimeoutRef.current = setTimeout(() => {
+        setShowStatus(false);
+      }, 1000) as number;
 
-    // Create audio blob
-    const audioBlob = new Blob(audioChunksRef.current, {
-      type: 'audio/webm',
-    });
-
-    // Stop media recorder
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-    }
-
-    // Stop media stream
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    // Proses message
-    (async () => {
-      try {
-    console.log('📊 Audio blob size:', audioBlob.size, 'bytes');
-        console.log('📝 Final transcript:', transcript);
-
-        // Check if we have transcript
-        if (!transcript || transcript.trim().length === 0) {
-     setError('Tidak ada suara yang terdeteksi. Silakan coba lagi.');
-          return;
-        }
-
-        // Add user message
-  const userMessage: VoiceResponse = {
-       id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
- message: transcript.trim(),
-      timestamp: Date.now(),
-          type: 'user',
-        };
-   setMessages((prev) => [...prev, userMessage]);
-
- // Send to backend
-        const backendResponse = await voiceService.sendVoiceMessage(audioBlob, transcript);
-
-        // Handle response
-        handleResponse(backendResponse);
-
-// Reset
-        audioChunksRef.current = [];
- setTranscript('');
-        hasFinalResultRef.current = false;
-      } catch (err) {
-     const errorMessage =
-       err instanceof Error ? err.message : 'Error processing voice';
-        console.error('Error:', err);
-        setError(`Gagal memproses: ${errorMessage}`);
-      } finally {
-        setIsProcessing(false);
-     isStoppingRef.current = false;
+      const response: VoiceResponse = await voiceService.sendVoiceMessage(transcript);
+      
+      // Handle response based on type
+      if (response.type === 'text' && response.data.message) {
+        addMessage('ai', response.data.message);
+      } else {
+        addMessage('ai', 'Saya telah menerima perintah Anda. Silakan cek navigasi.');
       }
-    })();
-  }, [transcript, handleResponse]);
-
-  // Toggle recording
-  const toggleRecording = useCallback(() => {
-    if (isRecording) {
-      handleStopRecording();
-    } else {
-      handleStartRecording();
+    } catch (error) {
+      console.error('Error sending command:', error);
+      addMessage('ai', 'Terjadi kesalahan saat memproses perintah Anda.');
+    } finally {
+      setIsProcessing(false);
+      clearTimeout(processingTimeoutRef.current);
+      setShowStatus(false);
     }
-  }, [isRecording, handleStartRecording, handleStopRecording]);
+  }, [addMessage]);
+
+  const handleStartRecording = useCallback(() => {
+    if (isProcessing) return;
+
+    // Mock recording
+    setIsRecording(true);
+
+    // Simulate recording with timeout
+    setTimeout(() => {
+      setIsRecording(false);
+    }, 2000);
+
+    // Mock transcript
+    setTimeout(() => {
+      const mockTranscript = 'Tampilkan halaman laporan finansial';
+      setCurrentTranscript(mockTranscript);
+      sendCommand(mockTranscript);
+    }, 2500);
+  }, [isProcessing, sendCommand]);
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(processingTimeoutRef.current);
+    };
+  }, []);
+
+  if (!isExpanded) {
+    return (
+      <button
+        onClick={() => setIsExpanded(true)}
+        className="fixed right-4 top-1/2 transform -translate-y-1/2 p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 z-50"
+        title="Buka Voice Chat"
+      >
+        <Mic className="w-5 h-5" />
+      </button>
+    );
+  }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end gap-3 max-w-md">
-      {/* Live Transcript */}
-      {isRecording && transcript && (
-        <div className="bg-white rounded-2xl shadow-2xl p-4 max-w-sm animate-in slide-in-from-bottom border border-gray-100">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="flex gap-1">
-              <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-              <div
-className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"
-                style={{ animationDelay: '0.2s' }}
-              ></div>
-        <div
-       className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"
-    style={{ animationDelay: '0.4s' }}
-           ></div>
-         </div>
-        <span className="text-xs text-gray-500 font-medium">Mendengarkan...</span>
-          </div>
-         <p className="text-gray-800 text-sm leading-relaxed wrap-break-word">{transcript}</p>
-        </div>
-      )}
-
-      {/* Processing Indicator */}
-   {isProcessing && (
-        <div className="bg-blue-50 rounded-2xl shadow-lg p-4 max-w-sm border border-blue-100">
-          <div className="flex items-center gap-3">
-    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-     <span className="text-sm text-blue-700 font-medium">Memproses perintah...</span>
-      </div>
-      </div>
-      )}
-
-      {/* Error Message */}
-    {error && !isRecording && !isProcessing && (
-        <div className="bg-red-50 text-red-700 rounded-2xl shadow-lg p-4 max-w-sm border border-red-100">
-         <p className="text-sm leading-relaxed">{error}</p>
-<button
-            onClick={() => setError(null)}
-           className="mt-2 text-xs text-red-600 hover:text-red-800 underline"
-          >
-            Tutup
-          </button>
-        </div>
-      )}
-
-      {/* Recent Messages (Last 2) */}
-      {!isRecording &&
-    !isProcessing &&
-       !error &&
-   messages.slice(-2).map((msg) => (
-          <div
-         key={msg.id}
-      className={`rounded-2xl shadow-lg p-4 max-w-sm animate-in slide-in-from-bottom ${
-       msg.type === 'user'
-         ? 'bg-blue-500 text-white ml-12'
-    : 'bg-white text-gray-800 border border-gray-100'
-    }`}
-       >
-   <p className="text-sm leading-relaxed wrap-break-word">{msg.message}</p>
-<span className="text-xs opacity-70 mt-2 block">
- {new Date(msg.timestamp).toLocaleTimeString('id-ID', {
-   hour: '2-digit',
-        minute: '2-digit',
-       })}
-     </span>
-        </div>
-      ))}
-
-      {/* Voice Button */}
-      <div className="relative">
-   <button
-       onClick={toggleRecording}
-     disabled={isProcessing}
-          className={`
-       w-16 h-16 rounded-full flex items-center justify-center
-        transition-all duration-300 shadow-lg hover:shadow-xl
-           ${
-        isRecording
-        ? 'bg-red-500 hover:bg-red-600 scale-110'
-         : 'bg-linear-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700'
-       }
-    ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}
-        disabled:opacity-50 disabled:cursor-not-allowed
- focus:outline-none focus:ring-4 focus:ring-blue-300
-     `}
-   aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
+    <div className="fixed right-4 top-1/2 transform -translate-y-1/2 w-80 bg-white rounded-lg shadow-xl z-50">
+      {/* Header */}
+      <div className="flex items-center justify-between p-3 border-b border-gray-200">
+        <h3 className="text-sm font-semibold text-gray-800">Voice Command</h3>
+        <button
+          onClick={() => setIsExpanded(false)}
+          className="p-1 hover:bg-gray-100 rounded"
+          title="Tutup"
         >
-          <Mic className="w-7 h-7 text-white" />
-
- {/* Recording Pulse Effect */}
- {isRecording && (
-    <>
-   <div className="absolute inset-0 border-4 border-red-400 rounded-full animate-ping opacity-75"></div>
-  <div className="absolute inset-0 border-2 border-red-300 rounded-full animate-pulse"></div>
-            </>
-     )}
-   </button>
-
-        {/* Recording Indicator Badge */}
-      {isRecording && (
-    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-medium shadow-md animate-pulse">
-            REC
-          </div>
-      )}
+          <div className="w-4 h-1 bg-gray-400 rounded-full" />
+        </button>
       </div>
 
-      {/* Hint Text */}
-      {!isRecording && !isProcessing && !error && messages.length === 0 && (
-        <div className="text-center">
-          <p className="text-xs text-gray-500 mt-2">Tekan untuk berbicara</p>
-        </div>
-      )}
+      {/* Status */}
+      <div className="px-3 py-2 border-b border-gray-200">
+        <div className="text-xs text-gray-600 mb-2">{isProcessing ? 'Processing command...' : 'Ready for your command'}</div>
+        
+        {showStatus && (
+          <div className="flex items-center space-x-2 bg-blue-50 p-2 rounded">
+            <Loader className="w-4 h-4 text-blue-500 animate-spin" />
+            <span className="text-xs text-blue-700">Processing...</span>
+          </div>
+        )}
+
+        {currentTranscript && (
+          <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-700">
+            <strong>Transcript:</strong> {currentTranscript}
+          </div>
+        )}
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto max-h-48 p-3 space-y-2">
+        {messages.length === 0 ? (
+          <p className="text-xs text-gray-500 text-center">No messages yet. Try recording a command.</p>
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`p-2 rounded text-xs ${
+                msg.type === 'user'
+                  ? 'bg-blue-100 ml-auto max-w-[80%]'
+                  : 'bg-gray-100 mr-auto max-w-[80%]'
+              }`}
+            >
+              {msg.message}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Record Button */}
+      <div className="p-3 border-t border-gray-200">
+        <button
+          onClick={handleStartRecording}
+          disabled={isProcessing || isRecording}
+          className={`w-full flex items-center justify-center space-x-2 py-2 px-3 text-black rounded text-sm transition-colors ${
+            isRecording
+              ? 'bg-red-500 text-white'
+              : isProcessing
+              ? 'bg-gray-200 text-gray-500'
+              : 'bg-blue-500 hover:bg-blue-600 text-white'
+          }`}
+        >
+          <Mic className="w-4 h-4" />
+          <span>{isRecording ? 'Recording...' : isProcessing ? 'Processing...' : 'Record Command'}</span>
+        </button>
+      </div>
+
+      {/* Help Text */}
+      <div className="px-3 pb-2">
+        <p className="text-xs text-gray-500">Try commands like: "Tampilkan dashboard" or "Bagaimana kondisi keuangan saya?"</p>
+      </div>
     </div>
   );
 };
