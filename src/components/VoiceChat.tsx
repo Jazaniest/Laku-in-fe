@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Mic, Loader, Square } from 'lucide-react';
 import { voiceService } from '@/services/voice.service';
-import type { VoiceResponse } from '@/services/voice.service';
+import type { VoiceResponse } from '@/types/voice.types';
 import type { SpeechRecognition, SpeechRecognitionEvent, SpeechRecognitionErrorEvent } from '@/types/voice.types';
 
 const VoiceChat: React.FC = () => {

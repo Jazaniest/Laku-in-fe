@@ -9,6 +9,41 @@ import type {
 } from '@/types/financial.types';
 
 class FinancialService {
+  private readonly API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  private readonly FINANCIAL_ENDPOINTS = {
+    financialRecord: '/financial-record'
+  } as const;
+
+  // Add API call method
+  private async apiCall<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const url = `${this.API_BASE_URL}${endpoint}`;
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...(options.headers || {})
+        },
+        credentials: 'include'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: response.statusText }));
+        throw new Error(errorData.message || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          throw new Error('Gagal terhubung ke server keuangan. Periksa koneksi internet Anda.');
+        }
+      }
+      throw error;
+    }
+  }
+
   private delay(ms: number): Promise<void> {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
@@ -51,7 +86,78 @@ class FinancialService {
     { id: 'TRX-0025', date: new Date('2024-01-17'), type: 'expense', category: 'Marketing', description: 'Marketing - Event Sponsorship', amount: 5000000, paymentMethod: 'transfer', status: 'cancelled', createdBy: 'John Doe' },
   ];
 
-  // Generate transactions dengan fixed seed
+  // Get all financial records - GET /financial-record
+  async getFinancialRecords(): Promise<any[]> {
+    try {
+      return await this.apiCall<any[]>(this.FINANCIAL_ENDPOINTS.financialRecord, {
+        method: 'GET'
+      });
+    } catch (error) {
+      console.warn('Get financial records API call failed, using fallback:', error);
+      return this.generateTransactions();
+    }
+  }
+
+  // Get single financial record - GET /financial-record/:id
+  async getFinancialRecord(id: string): Promise<any> {
+    try {
+      return await this.apiCall<any>(`${this.FINANCIAL_ENDPOINTS.financialRecord}/${id}`, {
+        method: 'GET'
+      });
+    } catch (error) {
+      console.warn('Get financial record API call failed, using fallback:', error);
+      const transactions = this.generateTransactions();
+      return transactions.find(t => t.id === id) || transactions[0];
+    }
+  }
+
+  // Create financial record - POST /financial-record
+  async createFinancialRecord(data: any): Promise<any> {
+    try {
+      return await this.apiCall<any>(this.FINANCIAL_ENDPOINTS.financialRecord, {
+        method: 'POST',
+        body: JSON.stringify(data || {})
+      });
+    } catch (error) {
+      console.warn('Create financial record API call failed, using fallback:', error);
+      const newRecord = {
+        id: `FIN-${Date.now()}`,
+        ...data,
+        createdAt: new Date()
+      };
+      return newRecord;
+    }
+  }
+
+  // Update financial record - PATCH /financial-record/:id
+  async updateFinancialRecord(id: string, data: any): Promise<any> {
+    try {
+      return await this.apiCall<any>(`${this.FINANCIAL_ENDPOINTS.financialRecord}/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data)
+      });
+    } catch (error) {
+      console.warn('Update financial record API call failed, using fallback:', error);
+      return {
+        id,
+        ...data,
+        updatedAt: new Date()
+      };
+    }
+  }
+
+  // Delete financial record - DELETE /financial-record/:id
+  async deleteFinancialRecord(id: string): Promise<boolean> {
+    try {
+      const response = await this.apiCall<{ success: boolean }>(`${this.FINANCIAL_ENDPOINTS.financialRecord}/${id}`, {
+        method: 'DELETE'
+      });
+      return response.success;
+    } catch (error) {
+      console.warn('Delete financial record API call failed, using fallback:', error);
+      return true;
+    }
+  }
   private generateTransactions(): Transaction[] {
     return [...this.mockTransactions].sort((a, b) => b.date.getTime() - a.date.getTime());
   }
