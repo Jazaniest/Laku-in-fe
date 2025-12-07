@@ -24,7 +24,7 @@ const BusinessAnalyticsPage = () => {
     <div className="min-h-screen bg-zinc-50">
         <PageHeader onBack={handleBack} />
 
-        <main className="p-6 max-w-7xl mx-auto">
+        <main className="py-4 sm:py-6 md:p-6 px-4 sm:px-4 md:px-6 max-w-7xl mx-auto">
         {loading ? (
             <LoadingState />
         ) : error ? (
@@ -46,8 +46,8 @@ const BusinessAnalyticsPage = () => {
 
             {/* Key Metrics */}
             <div>
-                <h2 className="text-xl font-bold text-zinc-900 mb-4">Key Metrics</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <h2 className="text-lg sm:text-xl font-bold text-zinc-900 mb-3 sm:mb-4">Key Metrics</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                 {data.metrics.map((metric) => (
                     <MetricCard key={metric.id} metric={metric} />
                 ))}
@@ -62,8 +62,8 @@ const BusinessAnalyticsPage = () => {
 
             {/* AI Insights */}
             <div>
-                <h2 className="text-xl font-bold text-zinc-900 mb-4">AI-Powered Insights</h2>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <h2 className="text-lg sm:text-xl font-bold text-zinc-900 mb-3 sm:mb-4">AI-Powered Insights</h2>
+                <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 {data.aiInsights.map((insight) => (
                     <AIInsightCard key={insight.id} insight={insight} />
                 ))}
@@ -77,21 +77,21 @@ const BusinessAnalyticsPage = () => {
                 <CardDescription>Prediksi berdasarkan data historis</CardDescription>
                 </CardHeader>
                 <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {data.predictions.map((pred) => (
-                    <div key={pred.id} className="p-4 border border-zinc-200 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                        <Badge className="bg-purple-100 text-purple-800">{pred.timeframe}</Badge>
-                        <span className="text-xs text-zinc-600">{pred.confidence}% confidence</span>
+                    <div key={pred.id} className="p-3 sm:p-4 border border-zinc-200 rounded-lg">
+                        <div className="flex items-center justify-between mb-1 sm:mb-2">
+                        <Badge className="bg-purple-100 text-purple-800 text-xs sm:text-sm">{pred.timeframe}</Badge>
+                        <span className="text-xs text-zinc-600 font-medium hidden sm:inline">{pred.confidence}% confidence</span>
                         </div>
-                        <p className="text-2xl font-bold text-zinc-900 mb-1">
+                        <p className="text-base sm:text-xl font-bold text-zinc-900 mb-1">
                         {pred.type === 'revenue' || pred.type === 'profit' 
                             ? formatCurrency(pred.prediction)
                             : `${pred.prediction}%`
                         }
                         </p>
-                        <p className="text-xs text-zinc-600 mb-3 capitalize">{pred.type}</p>
-                        <p className="text-xs text-zinc-700">{pred.reasoning}</p>
+                        <p className="text-xs text-zinc-600 mb-2 capitalize">{pred.type}</p>
+                        <p className="text-xs text-zinc-700 leading-relaxed">{pred.reasoning}</p>
                     </div>
                     ))}
                 </div>

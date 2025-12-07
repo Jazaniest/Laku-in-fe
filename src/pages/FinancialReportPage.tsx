@@ -55,7 +55,7 @@ const FinancialReportPage = () => {
     <div className="min-h-screen bg-zinc-50">
       <PageHeader onBack={handleBack} />
 
-      <main className="p-6 max-w-7xl mx-auto">
+      <main className="py-4 sm:py-6 md:p-6 px-4 sm:px-4 md:px-6 max-w-7xl mx-auto">
         {loading ? (
           <LoadingState />
         ) : error ? (
@@ -63,7 +63,7 @@ const FinancialReportPage = () => {
         ) : data ? (
           <div className="space-y-6">
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
               <SummaryCard
                 title="Total Pemasukan"
                 value={formatCurrency(data.summary.totalIncome)}
@@ -96,7 +96,7 @@ const FinancialReportPage = () => {
             </div>
 
             {/* Chart Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 md:gap-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Breakdown Kategori</CardTitle>
@@ -165,7 +165,7 @@ const FinancialReportPage = () => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
+                  <div className="flex flex-col xs:flex-row items-start xs:items-center gap-2 sm:gap-3 flex-wrap">
                     <SearchSection
                       value={filters.search || ''}
                       onChange={handleSearch}
@@ -177,27 +177,29 @@ const FinancialReportPage = () => {
                       onFilterChange={(newFilters) => updateFilters(newFilters)}
                       onReset={resetFilters}
                     />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={refreshReport}
-                      title="Refresh data"
-                      disabled={tableLoading}
-                    >
-                      <RotateCcw className={`w-4 h-4 ${tableLoading ? 'animate-spin' : ''}`} />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => handleExport('excel')}
-                      disabled={exportLoading}
-                    >
-                      {exportLoading ? (
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      ) : (
-                        <Download className="w-4 h-4 mr-2" />
-                      )}
-                      Export
-                    </Button>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={refreshReport}
+                        title="Refresh data"
+                        disabled={tableLoading}
+                      >
+                        <RotateCcw className={`w-4 h-4 ${tableLoading ? 'animate-spin' : ''}`} />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleExport('excel')}
+                        disabled={exportLoading}
+                      >
+                        {exportLoading ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Download className="w-4 h-4 mr-2" />
+                        )}
+                        Export
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </CardHeader>
